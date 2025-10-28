@@ -33,7 +33,7 @@ py -3.11 -m venv .venv
 (O seu terminal deve agora mostrar (.venv) no início do prompt)
 
 
---------------------------------------------------------------------------------------------- Ignorar Esta parte das instruções por enquanto -----------------------------------------------------------------------------------------------
+--------------------------------------------------- Ignorar Esta parte das instruções por enquanto -----------------------------------------------------------------------------------------------------------------------------------------
 Passo 3: Instalar o DfAnalyzer (Instalação Manual)
 A biblioteca DfAnalyzer de Vítor Silva não está no pip (o pip install dfanalyzer instala um pacote incorreto de outro autor).
 
