@@ -1,30 +1,3 @@
-# Automação de Instrumentação de Proveniência com IA
-
-Este projeto utiliza um modelo de linguagem de larga escala (Gemini) para automatizar a instrumentação de scripts científicos em Python, inserindo o código necessário para captura de proveniência com base na biblioteca **DfAnalyzer**.
-
-O *wrapper* de automação (`instrument_workflow.py`) lê um script Python simples, envia-o para a IA junto com um "gabarito" (`prompt_template.py`), e gera um novo script (`script_instrumentado.py`) que é totalmente instrumentado com as chamadas de proveniência prospectiva e retrospectiva.
-
-## Estrutura dos Arquivos
-
-* `instrument_workflow.py`: O script "wrapper" principal que orquestra a automação.
-* `prompt_template.py`: O "gabarito" (prompt mestre) que ensina a IA como instrumentar o código.
-* `meu_script.py`: Um script de exemplo (entrada) a ser instrumentado.
-* `check_models.py`: Um script utilitário para listar modelos de IA disponíveis.
-* `TutorialSomaDfAnalyzer-1.pdf`: A documentação de referência para a biblioteca `DfAnalyzer`.
-
----
-
-## 1. Configuração do Ambiente
-
-Para executar este projeto, é necessária uma configuração de ambiente muito específica, pois a biblioteca `DfAnalyzer` não está disponível no `pip` e requer Python 3.11.
-
-### Passo 1: Pré-requisitos
-* **Python 3.11**: O Python 3.13 (ou superior) apresentou problemas de incompatibilidade. Certifique-se de ter o [Python 3.11](https://www.python.org/downloads/release/python-3119/) instalado.
-
-### Passo 2: Criar e Ativar o Ambiente Virtual
-Estes comandos criam um ambiente virtual (`.venv`) usando especificamente o Python 3.11.
-
-```powershell
 # 1. Criar o .venv com Python 3.11
 py -3.11 -m venv .venv
 
@@ -151,4 +124,3 @@ Proveniência Retrospectiva salva.
 Workflow concluído.
 
 ---
-
