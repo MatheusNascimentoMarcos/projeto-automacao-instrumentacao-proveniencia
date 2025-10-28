@@ -32,7 +32,9 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 (O seu terminal deve agora mostrar (.venv) no início do prompt)
 
-Passo 3: Instalar o DfAnalyzer (Instalação Manual)
+
+----------- Ignorar Esta parte das instruções por enquanto ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+"""Passo 3: Instalar o DfAnalyzer (Instalação Manual)
 A biblioteca DfAnalyzer de Vítor Silva não está no pip (o pip install dfanalyzer instala um pacote incorreto de outro autor).
 
 Download: Baixe o código-fonte da branch main diretamente do GitLab:
@@ -56,7 +58,9 @@ Adicione esta única linha a ele e salve:
 
 Python
 
-from .dfanalyzer import *
+from .dfanalyzer import *""""
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 Passo 5: Instalar Dependências (Pip)
 Com o DfAnalyzer no lugar, instale as bibliotecas restantes (incluindo as dependências do DfAnalyzer e do wrapper).
 
