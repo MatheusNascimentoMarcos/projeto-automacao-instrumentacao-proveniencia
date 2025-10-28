@@ -1,8 +1,8 @@
 # Automação de Instrumentação de Proveniência com IA
 
-[cite_start]Este projeto utiliza um modelo de linguagem de larga escala (Gemini) para automatizar a instrumentação de scripts científicos em Python, inserindo o código necessário para captura de proveniência com base na biblioteca **DfAnalyzer**[cite: 1, 5, 100].
+Este projeto utiliza um modelo de linguagem de larga escala (Gemini) para automatizar a instrumentação de scripts científicos em Python, inserindo o código necessário para captura de proveniência com base na biblioteca **DfAnalyzer**.
 
-[cite_start]O *wrapper* de automação (`instrument_workflow.py`) lê um script Python simples, envia-o para a IA junto com um "gabarito" (`prompt_template.py`), e gera um novo script (`script_instrumentado.py`) que é totalmente instrumentado com as chamadas de proveniência prospectiva e retrospectiva[cite: 28, 49].
+O *wrapper* de automação (`instrument_workflow.py`) lê um script Python simples, envia-o para a IA junto com um "gabarito" (`prompt_template.py`), e gera um novo script (`script_instrumentado.py`) que é totalmente instrumentado com as chamadas de proveniência prospectiva e retrospectiva.
 
 ## Estrutura dos Arquivos
 
