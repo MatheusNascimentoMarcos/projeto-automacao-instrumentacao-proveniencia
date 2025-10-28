@@ -1,18 +1,3 @@
-# 1. Criar o .venv com Python 3.11
-py -3.11 -m venv .venv
-
-# 2. Ativar o .venv
-.\.venv\Scripts\Activate.ps1
-
-Com certeza. Aqui está um arquivo README.md completo que você pode salvar diretamente na sua pasta Docs Matheus.
-
-Ele explica o propósito do projeto, como configurar o ambiente (incluindo a complexa instalação manual do DfAnalyzer) e como rodar o wrapper. Abaixo dele, incluí o passo a passo para subir tudo para o GitHub.
-
-1. Arquivo README.md (Para seu Projeto)
-Basta copiar e colar este conteúdo em um novo arquivo chamado README.md na sua pasta Docs Matheus.
-
-Markdown
-
 # Automação de Instrumentação de Proveniência com IA
 
 [cite_start]Este projeto utiliza um modelo de linguagem de larga escala (Gemini) para automatizar a instrumentação de scripts científicos em Python, inserindo o código necessário para captura de proveniência com base na biblioteca **DfAnalyzer**[cite: 1, 5, 100].
