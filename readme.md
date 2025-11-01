@@ -22,7 +22,7 @@ O fluxo de trabalho consiste em duas etapas principais:
 O objetivo desta fase é construir a imagem Docker (`ia-prov-wrapper`) que contém o ambiente Python 3.11 e todas as bibliotecas necessárias (`prov`, `lxml`, `rdflib`, `google-generativeai`, etc.).
 
 1.  Abra um terminal PowerShell.
-2.  Navegue até a pasta que contém o `Dockerfile` (o simplificado que criamos para o `w3c-prov`):
+2.  Navegue até a pasta que contém o `Dockerfile`.
 3.  Execute o comando `docker build`: docker build -t ia-prov-wrapper .
     *(Este processo pode demorar alguns minutos da primeira vez)*
 
@@ -34,10 +34,9 @@ O objetivo desta fase é construir a imagem Docker (`ia-prov-wrapper`) que cont�
 
 ### Passo 1: Abra o Terminal e Navegue
 
-Abra um terminal PowerShell e navegue até a pasta que contém seus scripts Python (`instrument_workflow.py`, `prompt_template.py` v4, etc.).
+Abra um terminal PowerShell e navegue até a pasta que contém seus scripts Python (`instrument_workflow.py`, `prompt_template.py`, `meu_script.py`,`Dockerfile`,`etc`.) : cd "Caminho da sua pasta com os docs de instrumentação"
 
-```powershell
-cd "Caminho da sua pasta com os docs de instrumentação"
+```
 
 #Passo 2: Configure a Chave de API
 #Configure sua chave de API do Gemini. Ela só é válida para esta janela do terminal.
