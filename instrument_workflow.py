@@ -52,6 +52,23 @@ def clean_response_text(text):
     
     return text.strip()
 
+def fix_ia_hallucinations(generated_code):
+    """
+    Esta função corrige "alucinações" conhecidas da IA.
+    A biblioteca dfa_lib_python só entende NUMERIC e FILE.
+    Qualquer tipo complexo (lista, string, etc.) será salvo como FILE.
+    """
+    print("Executando pós-processamento automatizado v2 (FILE) no código da IA...")
+
+    # Converte tipos complexos/inventados para FILE, que aceita strings
+    code = generated_code.replace("AttributeType.COLLECTION", "AttributeType.FILE")
+    code = code.replace("AttributeType.STRING", "AttributeType.FILE")
+    code = code.replace("AttributeType.LIST", "AttributeType.FILE")
+    code = code.replace("AttributeType.BOOL", "AttributeType.FILE")
+    code = code.replace("AttributeType.DICT", "AttributeType.FILE")
+
+    return code
+
 def generate_instrumentation(code_to_instrument):
     """
     Envia o código e o prompt mestre para a API do Gemini e retorna 
@@ -81,7 +98,12 @@ def generate_instrumentation(code_to_instrument):
         response = model.generate_content(final_prompt)
         
         # Limpa a resposta para obter apenas o código
-        return clean_response_text(response.text)
+        raw_code = clean_response_text(response.text)
+
+        # Aplica a correção automatizada
+        fixed_code = fix_ia_hallucinations(raw_code)
+
+        return fixed_code
 
     except Exception as e:
         print(f"Erro durante a chamada da API do Gemini: {e}")
