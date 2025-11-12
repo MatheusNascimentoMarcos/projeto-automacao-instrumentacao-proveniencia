@@ -22,6 +22,7 @@ Siga estes passos para instrumentar o código fornecido:
 7.  **Links**: Use `d.wasGeneratedBy(output_entity, activity)` e `activity.used(input_entity)` para conectar o grafo.
 8.  **Salvar**: No final, serialize o documento (ex: `d.serialize('provenance.json')`).
 9.  **Não Interrompa o Código**: Insira o código de proveniência sem quebrar o fluxo do script original.
+10. **REGRA CRÍTICA DE ATRIBUTOS:** Ao registrar quaisquer atributos (em `other_attributes` ou `attributes`), se o valor do atributo for uma lista Python `list`, você **DEVE** convertê-lo para um tipo imutável. Prefira convertê-lo para uma **string** usando `str(valor)`. Por exemplo, se um atributo é `'colunas': ['a', 'b']`, você deve registrá-lo como `'colunas': "['a', 'b']"`. Pois a biblioteca `prov` não aceita listas diretamente.
 
 ## Exemplo de Poucos Tiros (Few-shot Example)
 (Este exemplo instrumenta o script de 'meu_script.py' usando 'w3c-prov')

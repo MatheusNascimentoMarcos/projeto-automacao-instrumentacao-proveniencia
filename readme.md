@@ -34,10 +34,9 @@ O objetivo desta fase é construir a imagem Docker (`ia-prov-wrapper`) que cont�
 
 ### Passo 1: Abra o Terminal e Navegue
 
-Abra um terminal PowerShell e navegue até a pasta que contém seus scripts Python (`instrument_workflow.py`, `prompt_template.py` v4, etc.).
+Abra um terminal PowerShell e navegue até a pasta que contém seus scripts Python (`instrument_workflow.py`, `prompt_template.py`,`meu_script.py`,`Dockerfile`, etc.).
 
-```powershell
-cd "Caminho da sua pasta com os docs de instrumentação"
+cd "Caminho da sua pasta com os docs de instrumentação e do dockerfile"
 
 #Passo 2: Configure a Chave de API
 #Configure sua chave de API do Gemini. Ela só é válida para esta janela do terminal.
@@ -58,12 +57,14 @@ Explicação do "Espelhamento" (-v "${PWD}:/app"):
 
 Isso permite que o contêiner leia o meu_script.py e salve o script_instrumentado_prov.py de volta no diretório local.
 
-Saída Esperada:
-
+#Saída Esperada:
+'''
 Lendo o script de entrada: meu_script.py
 Iniciando a instrumentação com a IA do Gemini...
 [SUCESSO] Código instrumentado salvo em: script_instrumentado_prov.py
+
 '''
+
 
 #Passo 4: Depuração do Script (Execução 2)
 ##Agora que o script_instrumentado_prov.py existe na sua pasta, execute este segundo comando para executá-lo dentro do contêiner.
@@ -71,7 +72,8 @@ docker run -it --rm -v "${PWD}:/app" ia-prov-wrapper python3 script_instrumentad
 
 #Saída Esperada (A Depuração): Você verá a saída do script sendo executado, provando que a instrumentação foi bem-sucedida, assim como a execução do exemplo de calculo da média abaixo:
 
-'''Iniciando workflow: Calculo de Média
+'''
+Iniciando workflow: Calculo de Média
 Dados carregados (simuladamente) de data/raw_data.csv
 Média calculada: 15.719999999999999
 Salvando resultado em results/media_final.txt
