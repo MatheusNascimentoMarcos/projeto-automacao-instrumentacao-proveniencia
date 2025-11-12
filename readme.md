@@ -32,11 +32,12 @@ O objetivo desta fase é construir a imagem Docker (`ia-prov-wrapper`) que cont�
 
 ### Este é o fluxo de trabalho principal. Você deve executá-lo a partir da sua pasta de projeto.
 
-### Passo 1: Abra o Terminal e Navegue
+```powershell
+
+# Passo 1: Abra o Terminal e Navegue
 
 Abra um terminal PowerShell e navegue até a pasta que contém seus scripts Python (`instrument_workflow.py`, `prompt_template.py` v4, etc.).
 
-```powershell
 cd "Caminho da sua pasta com os docs de instrumentação"
 
 #Passo 2: Configure a Chave de API
