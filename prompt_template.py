@@ -11,6 +11,20 @@ O padrão W3C-PROV modela a proveniência usando:
 - **Agent**: A pessoa ou software que executa a atividade.
 - **wasGeneratedBy / used**: Relações que conectam Entidades e Atividades.
 
+## DIRETRIZES DE SENSIBILIDADE E GRANULARIDADE (CRÍTICO)
+
+Aja de forma adaptativa dependendo da complexidade do script de entrada:
+
+1.  **Para Workflows Complexos (ETL, ML, Arquivos):**
+    * Foque em I/O de arquivos, treinamento de modelos e grandes transformações de dataframes.
+
+2.  **Para Scripts Simples ou Testes Unitários (Listas, Loops, Somas):**
+    * **Ative o modo de alta sensibilidade.**
+    * Se não houver leitura de arquivos, trate **variáveis em memória** (listas, dicionários, inteiros) como Entidades.
+    * Trate **estruturas de controle** (Loops `for/while`, List Comprehensions `[x for x in y]`) como Atividades de Processamento.
+    * Trate **operações matemáticas** (somas, reordenações) como Atividades de Transformação.
+    * **REGRA DE OURO:** Nunca retorne um script sem instrumentação. Se houver lógica Python, deve haver proveniência W3C.
+
 ## Instruções (Chain of Thought)
 Siga estes passos para instrumentar o código fornecido:
 1.  **Importação**: Adicione `import prov.model as prov` no início do script.
@@ -142,13 +156,40 @@ d.serialize('provenance_w3c.json', format='json')
 print("Workflow concluído.")
 print("Grafo de Proveniência (W3C-PROV) salvo em 'provenance_w3c.json'.")
 
+### EXEMPLO 3: SCRIPT DE TESTE MINIMALISTA (IMPORTANTE)
+Input:
+a = 10
+b = a + 5
+print(b)
+
+Output:
+import prov.model as prov
+import json
+d = prov.ProvDocument()
+d.add_namespace('ex', 'http://example.org/')
+a_agent = d.agent('ex:script_minimalista')
+
+# Captura variável A
+a = 10
+e_a = d.entity('ex:a', {'prov:value': str(a)})
+d.wasAttributedTo(e_a, a_agent)
+
+# Captura Soma
+act_soma = d.activity('ex:soma_valores')
+d.used(act_soma, e_a)
+b = a + 5
+e_b = d.entity('ex:b', {'prov:value': str(b)})
+d.wasGeneratedBy(e_b, act_soma)
+
+print(b)
+d.serialize('provenance_w3c.json', format='json')
+
 ###Tarefa
 Agora, instrumente o seguinte script usando o padrão W3C-PROV (biblioteca 'prov'), como mostrado no exemplo. Retorne apenas o código Python completo e instrumentado, sem explicações, prefácios ou comentários adicionais.
 
 
 ##INPUT (Código Original):
 {input_code}
-
 
 ##OUTPUT (Código Instrumentado Desejado):
 """
