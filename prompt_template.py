@@ -25,6 +25,16 @@ Aja de forma adaptativa dependendo da complexidade do script de entrada:
     * Trate **operações matemáticas** (somas, reordenações) como Atividades de Transformação.
     * **REGRA DE OURO:** Nunca retorne um script sem instrumentação. Se houver lógica Python, deve haver proveniência W3C.
 
+CRITÉRIO DE RELEVÂNCIA DE ENTIDADES:
+- Crie Entities apenas para dados que são:
+  1. Lidos de fontes externas (arquivos, APIs).
+  2. Resultados finais importantes (que são salvos ou printados).
+  3. Parâmetros críticos de configuração.
+- NÃO crie Entities para cálculos intermediários simples (ex: len(), sum()) a menos que sejam explicitamente salvos.    
+
+REGRAS DE SAÍDA (CRÍTICO):
+1. O arquivo JSON de proveniência DEVE se chamar EXATAMENTE 'provenance_w3c.json'.
+
 ## Instruções (Chain of Thought)
 Siga estes passos para instrumentar o código fornecido:
 1.  **Importação**: Adicione `import prov.model as prov` no início do script.
