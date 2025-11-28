@@ -79,3 +79,114 @@ Salvando resultado em results/media_final.txt
 Workflow concluído.
 Grafo de Proveniência (W3C-PROV) salvo em provenance.json no diretório com os arquivos do workflow de instrumentação.
 '''
+
+```powershell
+
+```
+
+# 🧪 Validação Metamórfica de Instrumentação de Proveniência - FASE 2
+
+Este repositório contém um framework de testes automatizados projetado para validar a robustez e a consistência do **Agente de Instrumentação W3C-PROV** (baseado em LLM/Gemini).
+
+Como utilizamos Inteligência Artificial Generativa para escrever código, não existe um "gabarito" único (Problema do Oráculo). Por isso, utilizamos a técnica de **Testes Metamórficos** para verificar se as **relações lógicas** da proveniência se mantêm mesmo quando o código fonte sofre mutações.
+
+## 📂 Estrutura dos Testes
+
+O framework é dividido em dois níveis de validação:
+
+| Arquivo | Objetivo | Tipo de Teste |
+| :--- | :--- | :--- |
+| **`teste_metamorfico_avancado.py`** | Valida a **FERRAMENTA** e o **PROMPT**. Usa cenários sintéticos (cenários de testes genéricos) para garantir que a IA entende conceitos básicos de Python. | Teste de Unidade / Harness |
+| **`teste_cenario_real.py`** | Valida seu **SCRIPT DE PRODUÇÃO** (`ETL.py`, `meu_script.py`). Aplica mutações matemáticas e lógicas no seu código real. | Teste de Integração / Mutação |
+| **`mutator_engine_advanced.py`** | O "cérebro" das mutações. Usa AST (Abstract Syntax Tree) para reescrever código Python de forma segura. | Biblioteca de Apoio |
+
+-----
+
+## 1\. Teste de Ferramenta (`teste_metamorfico_avancado.py`)
+
+Este script gera pequenos códigos Python "falsos" em tempo de execução para testar se o Prompt Template está calibrado corretamente.
+
+### Relações Metamórficas Testadas:
+
+1.  **Equivalência Sintática (Loop vs. Comprehension):**
+      * *Cenário:* Compara um loop `for` tradicional com uma `list comprehension` (`[x for x in y]`).
+      * *Expectativa:* Ambos devem gerar o mesmo número de Atividades de processamento no grafo PROV.
+2.  **Permutação de Blocos Independentes:**
+      * *Cenário:* Troca a ordem de declaração de variáveis que não dependem uma da outra.
+      * *Expectativa:* O grafo de proveniência deve ter a mesma topologia (mesmo número de nós), provando que a IA entende fluxo de dados e não apenas sequência de linhas.
+3.  **Decomposição (Split):**
+      * *Cenário:* Quebra um script em duas partes e soma os resultados.
+      * *Expectativa:* `Atividades(Parte 1) + Atividades(Parte 2) ≈ Atividades(Script Completo)`.
+
+-----
+
+## 2\. Teste de Cenário Real (`teste_cenario_real.py`)
+
+Este script pega o seu arquivo de produção (ex: `ETL.py`) e cria "Mutantes" — versões alteradas logicamente — para desafiar a IA.
+
+### Mutações Aplicadas (via AST):
+
+1.  **Mutação Sintática (Comutatividade):**
+      * Altera operações matemáticas (`a + b` $\to$ `b + a`) e comparações (`x < y` $\to$ `y > x`).
+      * *Objetivo:* Verificar se a IA entende a semântica da operação, independentemente de como foi escrita.
+2.  **Permutação de Blocos Segura:**
+      * O motor analisa as dependências de cada linha. Se a `Linha A` e a `Linha B` não compartilham variáveis, elas são trocadas de lugar.
+      * *Objetivo:* Verificar se a captura de proveniência é robusta a refatorações de código.
+3.  **Decomposição (Corte Cirúrgico):**
+      * Corta o script ao meio, mantendo os imports na segunda metade.
+      * *Objetivo:* Verificar se a IA consegue instrumentar fragmentos parciais de código.
+
+-----
+
+## 🚀 Como Executar
+
+Certifique-se de que o Docker está rodando e que sua `GEMINI_API_KEY` está configurada.
+
+### Passo 1: Validar a Ferramenta
+
+Execute para garantir que a IA está "sã" e o prompt está funcionando:
+
+```powershell
+python teste_metamorfico_avancado.py
+```
+
+### Passo 2: Validar seu Script
+
+Edite o arquivo `teste_cenario_real.py` e ajuste a variável `SCRIPT_ALVO` para o nome do seu arquivo (ex: `ETL.py`). Depois execute:
+
+```powershell
+python teste_cenario_real.py
+```
+
+-----
+
+## 📊 Interpretando os Resultados
+
+Os scripts exibem relatórios coloridos no terminal. Veja como ler:
+
+  * **✅ SUCESSO:**
+
+      * As métricas (número de Atividades e Entidades) do código Original e do Mutante são idênticas.
+      * Isso significa que a IA foi **robusta** e entendeu a lógica perfeitamente.
+
+  * **✅ SUCESSO (Tolerância / Variação Mínima):**
+
+      * Houve uma pequena diferença (ex: 1 atividade a mais), mas dentro do aceitável.
+      * Comum em Decomposição, onde a IA pode criar uma atividade extra de "Carga" para consertar um script quebrado.
+
+  * **⚠️ INCONCLUSIVO:**
+
+      * Geralmente ocorre quando o script instrumentado pela IA falha ao executar (ex: Erro de `FileNotFound` ou `KeyError` no Pandas).
+      * **Importante:** Mesmo com erro de execução, o teste verifica se o grafo foi gerado. Se o grafo existe, a **instrumentação funcionou**, apenas o código do usuário (ou a mutação) estava incompleto.
+
+  * **❌ FALHA:**
+
+      * Diferença drástica entre o Original e o Mutante (ex: Original tem 5 atividades, Mutante tem 0).
+      * Indica que a IA se confundiu ou "alucinou" devido à mudança no código. Sugere necessidade de ajuste no `prompt_template.py`.
+
+-----
+
+## 🛠️ Manutenção e Ajustes
+
+  * **Motor de Mutação:** O arquivo `mutator_engine_advanced.py` pode ser expandido para incluir novas regras (ex: trocar loops `for` por `while`).
+  * **Prompt:** Se os testes começarem a falhar muito, revise as "Diretrizes de Sensibilidade" no `prompt_template.py`.
