@@ -15,13 +15,14 @@ print(f"Dados carregados (simuladamente) de {caminho_arquivo_entrada}")
 # O código principal do workflow
 soma = sum(dados_brutos)
 contagem = len(dados_brutos)
-media = np.mean(dados_brutos) # Usando numpy para parecer mais científico
+media = np.mean(dados_brutos)  # Usando numpy para parecer mais científico
 
 print(f"Média calculada: {media}")
 
 
 # --- Etapa 3: Salvar Resultado (Simulado) ---
-# Em um workflow real, isso salvaria em um arquivo de texto ou CSV.
+# Em um workflow real, isso salvara em um arquivo de texto ou CSV.
 caminho_arquivo_saida = "results/media_final.txt"
 print(f"Salvando resultado em {caminho_arquivo_saida}")
 print("Workflow concluído.")
+
