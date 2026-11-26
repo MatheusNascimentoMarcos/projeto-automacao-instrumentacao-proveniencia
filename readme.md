@@ -263,7 +263,7 @@ O template `metamorphic` foi desenhado para o pipeline de validação metamórfi
 | **RM5** | Inversão de etapas independentes e precedência temporal (Inv. 3.3) | Não coberta: a permutação muda a ordem, mas os timestamps não são verificados |
 | **RM6** | Laço vs. versão desdobrada (Inv. 3.2 e 3.4) | Não coberta: o teste loop vs. comprehension é outra relação |
 
-As comparações atuais usam **contagem de Activities e Entities**. Contagens iguais são necessárias para o isomorfismo, mas não suficientes. Verificações mais fortes, e as quatro invariantes dfinidasno documento de estabelecimento das RM's são o próximo passo natural.
+As comparações atuais usam **contagem de Activities e Entities**. Contagens iguais são necessárias para o isomorfismo, mas não suficientes. Verificações mais fortes,como as quatro invariantes dfinidas no documento de estabelecimento das RM's bem como as RM's 7 e 8 são o próximo passo natural.
 
 ---
 
