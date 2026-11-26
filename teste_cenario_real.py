@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import glob
 import sys
+import argparse
 
 # --- IMPORTAÇÃO DO MOTOR DE MUTAÇÃO ---
 try:
@@ -25,7 +26,24 @@ if not api_key:
 
 IMG_NAME = "ia-prov-wrapper"
 CURRENT_DIR = os.getcwd()
-DIR_TESTES = "temp_real_advanced"
+
+# Nível de granularidade do template de prompt (definido via --level ou PROV_LEVEL)
+VALID_LEVELS = ["coarse", "medium", "fine", "metamorphic"]
+LEVEL = "metamorphic"
+DIR_TESTES = f"temp_real_advanced_{LEVEL}"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Teste metamórfico em cenário real (mutações via AST)."
+    )
+    parser.add_argument(
+        "--level",
+        choices=VALID_LEVELS,
+        default=os.environ.get("PROV_LEVEL", "metamorphic"),
+        help="Granularidade do template de prompt (padrão: metamorphic ou $PROV_LEVEL).",
+    )
+    return parser.parse_args()
 
 # --- SOLUÇÃO DE PERMISSÃO (Docker User Mirror) ---
 try:
@@ -96,6 +114,8 @@ def executar_pipeline(nome_arq, step_name):
         "instrument_workflow.py",
         path_in_docker,
         path_out_docker,
+        "--level",
+        LEVEL,
     ]
     res_inst = subprocess.run(cmd_inst)
 
@@ -182,7 +202,11 @@ def comparar_resultados(orig_metrics, mut_metrics, nome_teste):
 
 
 def main():
-    global SCRIPT_ALVO  # <--- MOVIDO PARA CÁ (CORREÇÃO)
+    global SCRIPT_ALVO, LEVEL, DIR_TESTES
+
+    args = parse_args()
+    LEVEL = args.level
+    DIR_TESTES = f"temp_real_advanced_{LEVEL}"  # uma pasta por nível, para comparar depois
 
     setup()
     try:
@@ -195,7 +219,7 @@ def main():
             else:
                 return
 
-        print(f"🔵 Iniciando Testes Avançados em: {SCRIPT_ALVO}")
+        print(f"🔵 Iniciando Testes Avançados em: {SCRIPT_ALVO} (nível: {LEVEL})")
         with open(SCRIPT_ALVO, "r", encoding="utf-8") as f:
             original_code = f.read()
 

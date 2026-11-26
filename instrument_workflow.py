@@ -3,7 +3,20 @@
 import os
 import argparse
 import google.generativeai as genai
-from prompt_template import PROMPT_MESTRE_TEMPLATE # Importa o prompt do outro arquivo
+
+from prompt_template_coarse import PROMPT_COARSE_TEMPLATE
+from prompt_template_medium import PROMPT_MEDIUM_TEMPLATE
+from prompt_template_fine import PROMPT_FINE_TEMPLATE
+from prompt_template_metamorphic import PROMPT_METAMORPHIC_TEMPLATE
+
+# Seletor de granularidade: nível -> template de prompt
+TEMPLATES = {
+    "coarse": PROMPT_COARSE_TEMPLATE,
+    "medium": PROMPT_MEDIUM_TEMPLATE,
+    "fine": PROMPT_FINE_TEMPLATE,
+    "metamorphic": PROMPT_METAMORPHIC_TEMPLATE,
+}
+
 
 def configure_api():
     """Configura a API do Gemini usando uma chave de ambiente."""
@@ -12,13 +25,14 @@ def configure_api():
         print("Erro: A variável de ambiente 'GEMINI_API_KEY' não foi definida.")
         print("Defina-a com: $env:GEMINI_API_KEY = 'sua_chave_api'")
         return False
-    
+
     try:
         genai.configure(api_key=API_KEY)
         return True
     except Exception as e:
         print(f"Erro ao configurar a API: {e}")
         return False
+
 
 def read_file(filepath):
     """Lê o conteúdo de um arquivo de código-fonte."""
@@ -32,6 +46,7 @@ def read_file(filepath):
         print(f"Erro ao ler o arquivo {filepath}: {e}")
         return None
 
+
 def write_file(filepath, content):
     """Salva o conteúdo instrumentado em um novo arquivo."""
     try:
@@ -41,26 +56,40 @@ def write_file(filepath, content):
     except Exception as e:
         print(f"Erro ao salvar o arquivo {filepath}: {e}")
 
+
 def clean_response_text(text):
     """Remove marcações de markdown (```) que o modelo pode adicionar."""
+    text = text.strip()
     if text.startswith("```python"):
         text = text[len("```python"):]
-    if text.startswith("```"):
+    elif text.startswith("```"):
         text = text[len("```"):]
     if text.endswith("```"):
         text = text[:-len("```")]
-    
+
     return text.strip()
 
 
-def generate_instrumentation(code_to_instrument):
+def build_prompt(code_to_instrument, level):
     """
-    Envia o código e o prompt mestre para a API do Gemini e retorna 
-    o código instrumentado.
+    Monta o prompt final para o nível de granularidade escolhido.
+
+    Os templates têm as chaves literais dos exemplos escapadas ({{ }}),
+    então devem passar por .format(). O código do usuário é injetado como
+    valor, portanto chaves dentro dele não causam KeyError.
     """
-    print("Iniciando a instrumentação com a IA do Gemini...")
+    template = TEMPLATES[level]
+    return template.format(input_code=code_to_instrument)
+
+
+def generate_instrumentation(code_to_instrument, level):
+    """
+    Envia o código e o prompt do nível escolhido para a API do Gemini
+    e retorna o código instrumentado.
+    """
+    print(f"Iniciando a instrumentação com a IA do Gemini (nível: {level})...")
     print("Isso pode levar alguns segundos...")
-    
+
     # Define configurações de segurança menos restritivas
     # (Útil para geração de código, que pode ser sinalizado como "perigoso")
     safety_settings = [
@@ -72,18 +101,14 @@ def generate_instrumentation(code_to_instrument):
 
     try:
         model = genai.GenerativeModel(
-            'models/gemini-pro-latest', # Usando o nome exato da sua lista
+            'models/gemini-pro-latest',
             safety_settings=safety_settings
         )
-        
-        # Formata o prompt final injetando o código do usuário
-        #final_prompt = PROMPT_MESTRE_TEMPLATE.format(input_code=code_to_instrument)
 
-        # Correção: Usar .replace() evita que o Python confunda dicionários com variáveis
-        final_prompt = PROMPT_MESTRE_TEMPLATE.replace("{input_code}", code_to_instrument)
-        
+        final_prompt = build_prompt(code_to_instrument, level)
+
         response = model.generate_content(final_prompt)
-        
+
         # Limpa a resposta para obter apenas o código
         raw_code = clean_response_text(response.text)
 
@@ -93,17 +118,26 @@ def generate_instrumentation(code_to_instrument):
         print(f"Erro durante a chamada da API do Gemini: {e}")
         return None
 
+
 def main():
     """Função principal para orquestrar o processo via linha de comando."""
-    
-    # Configura o parser de argumentos
+
     parser = argparse.ArgumentParser(
         description="Automatiza a instrumentação de workflows científicos com IA (Gemini).",
-        epilog="Exemplo de uso: python instrument_workflow.py meu_script.py script_instrumentado.py"
+        epilog=(
+            "Exemplo de uso: python instrument_workflow.py meu_script.py "
+            "script_instrumentado.py --level fine"
+        ),
     )
     parser.add_argument("input_file", help="Caminho para o script Python a ser instrumentado.")
     parser.add_argument("output_file", help="Caminho onde o script instrumentado será salvo.")
-    
+    parser.add_argument(
+        "--level",
+        choices=list(TEMPLATES.keys()),
+        default="metamorphic",
+        help="Granularidade do template de prompt (padrão: metamorphic).",
+    )
+
     # 1. Parse os argumentos
     args = parser.parse_args()
 
@@ -119,13 +153,14 @@ def main():
         return
 
     # 4. Gerar a instrumentação via IA
-    instrumented_code = generate_instrumentation(original_code)
-    
+    instrumented_code = generate_instrumentation(original_code, args.level)
+
     # 5. Salvar o arquivo de saída
     if instrumented_code:
         write_file(args.output_file, instrumented_code)
     else:
         print("\n[FALHA] Não foi possível gerar o código instrumentado.")
+
 
 if __name__ == "__main__":
     main()

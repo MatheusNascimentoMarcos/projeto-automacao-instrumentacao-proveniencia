@@ -6,28 +6,83 @@ import copy
 # ==========================================
 # 1. ANÁLISE DE DEPENDÊNCIAS (O Cérebro)
 # ==========================================
+# Chamadas com efeito colateral de I/O: todas compartilham um "recurso" fictício
+# (__io__), então nunca são reordenadas entre si (preserva a ordem de print/arquivos).
+IO_BUILTINS = {"print", "open", "input", "exec", "eval", "exit", "quit"}
+IO_ATTR_PREFIXES = ("read", "write", "to_", "save", "dump", "load", "open", "close")
+IO_RESOURCE = "__io__"
+
+
 class DependencyVisitor(ast.NodeVisitor):
     """
     Analisa um nó da árvore (uma linha de código) e descobre:
     - O que ele LÊ (Load)
     - O que ele ESCREVE (Store)
+
+    Análise conservadora: na dúvida, considera que há dependência (isso só
+    reduz as permutações possíveis, nunca gera uma permutação insegura).
     """
 
     def __init__(self):
         self.read = set()
         self.written = set()
 
+    @staticmethod
+    def _base_name(expr):
+        """Nome-base de `a.b[0].c` -> 'a'. None se não for um Name."""
+        while isinstance(expr, (ast.Attribute, ast.Subscript)):
+            expr = expr.value
+        return expr.id if isinstance(expr, ast.Name) else None
+
     def visit_Name(self, node):
         if isinstance(node.ctx, ast.Load):
             self.read.add(node.id)
         elif isinstance(node.ctx, ast.Store):
             self.written.add(node.id)
-        # AugAssign (+=) é leitura E escrita
         elif isinstance(node.ctx, ast.Del):
             self.written.add(node.id)
 
     def visit_arg(self, node):
         self.written.add(node.arg)
+
+    def visit_AugAssign(self, node):
+        # x += 1 lê E escreve x
+        base = self._base_name(node.target)
+        if base:
+            self.read.add(base)
+            self.written.add(base)
+        self.generic_visit(node)
+
+    def _mark_container_write(self, node):
+        # d['k'] = v  /  obj.attr = v  /  del d['k']  -> escreve no objeto-base
+        if isinstance(node.ctx, (ast.Store, ast.Del)):
+            base = self._base_name(node)
+            if base:
+                self.written.add(base)
+        self.generic_visit(node)
+
+    def visit_Subscript(self, node):
+        self._mark_container_write(node)
+
+    def visit_Attribute(self, node):
+        self._mark_container_write(node)
+
+    def visit_Call(self, node):
+        func = node.func
+        # print(...), open(...), input(...)
+        if isinstance(func, ast.Name) and func.id in IO_BUILTINS:
+            self.read.add(IO_RESOURCE)
+            self.written.add(IO_RESOURCE)
+        # lista.append(...), df.dropna(inplace=True), df.to_csv(...), pd.read_csv(...)
+        elif isinstance(func, ast.Attribute):
+            base = self._base_name(func)
+            if base:
+                # método pode mutar o objeto in-place: trata como escrita
+                self.written.add(base)
+            if func.attr.startswith(IO_ATTR_PREFIXES):
+                self.read.add(IO_RESOURCE)
+                self.written.add(IO_RESOURCE)
+        self.generic_visit(node)
 
 
 def get_dependencies(node):
@@ -44,13 +99,28 @@ class SyntacticEquivalenceTransformer(ast.NodeTransformer):
     Aplica várias transformações que mantêm a lógica intacta.
     """
 
-    def visit_BinOp(self, node):
-        # 1. Comutatividade: a + b -> b + a
-        if isinstance(node.op, (ast.Add, ast.Mult)):
-            # Evita trocar se for concatenação de string literal para não quebrar lógica visual
-            if not (
-                isinstance(node.left, ast.Constant) and isinstance(node.left.value, str)
+    @staticmethod
+    def _pode_ser_nao_numerico(node):
+        """
+        True se a expressão contém literais de string/bytes/coleção ou f-string.
+        Nesses casos a troca a + b -> b + a pode alterar o resultado
+        (concatenação não é comutativa).
+        """
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Constant) and isinstance(sub.value, (str, bytes)):
+                return True
+            if isinstance(
+                sub, (ast.JoinedStr, ast.List, ast.Tuple, ast.Set, ast.Dict, ast.ListComp)
             ):
+                return True
+        return False
+
+    def visit_BinOp(self, node):
+        # 1. Comutatividade: a + b -> b + a (somente quando seguro)
+        # Limitação: se os operandos forem variáveis que guardam str/list, a troca
+        # ainda pode alterar o resultado; o motor não infere tipos.
+        if isinstance(node.op, (ast.Add, ast.Mult)):
+            if not self._pode_ser_nao_numerico(node):
                 node.left, node.right = node.right, node.left
         return self.generic_visit(node)
 

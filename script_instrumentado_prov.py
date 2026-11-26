@@ -1,62 +1,143 @@
-# meu_script.py
-# Um script simples para calcular a média de uma lista de números,
-# instrumentado com o padrão W3C-PROV.
+#!/usr/bin/env python
+# coding: utf-8
 
-import numpy as np
+# # Script ETL - Tratamento de Dados de Clientes e Compras
+# 
+# Este script converte o notebook 'ETL.ipynb' para um arquivo Python executável.
+# Ele lê um arquivo CSV, aplica várias transformações de limpeza de dados
+# e salva o resultado em um novo arquivo CSV.
+
+import pandas as pd
 import prov.model as prov
 import json
+from datetime import datetime, timezone
 
-# --- CONFIGURAÇÃO INICIAL DE PROVENIÊNCIA ---
-d = prov.ProvDocument()
-d.add_namespace('ex', 'http://example.org/')
-a_script = d.agent('ex:meu_script.py')
+def extrair_dados(caminho_arquivo):
+    """
+    Carrega os dados do arquivo CSV inicial.
+    """
+    print(f"Iniciando a leitura do arquivo: {caminho_arquivo}")
+    try:
+        df = pd.read_csv(caminho_arquivo, encoding="utf-8", delimiter=";")
+        print(f"Número de tuplas/atributos inicial: {df.shape}")
+        return df
+    except FileNotFoundError:
+        print(f"Erro: O arquivo '{caminho_arquivo}' não foi encontrado.")
+        print("Por favor, coloque o arquivo no mesmo diretório do script.")
+        return None
+    except Exception as e:
+        print(f"Ocorreu um erro inesperado ao ler o arquivo: {e}")
+        return None
 
-# --- Etapa 1: Carregar Dados (Simulado) ---
-# Em um workflow real, isso leria de um arquivo.
-print("Iniciando workflow: Calculo de Média")
-dados_brutos = [15.2, 16.1, 14.8, 15.5, 17.0]
-caminho_arquivo_entrada = "data/raw_data.csv"
-print(f"Dados carregados (simuladamente) de {caminho_arquivo_entrada}")
+def transformar_dados(df):
+    """
+    Aplica as regras de limpeza e transformação no DataFrame.
+    """
+    if df is None:
+        return None
 
-# --- Captura de Proveniência (Etapa 1) ---
-a_load = d.activity('ex:carregar_dados')
-d.wasAssociatedWith(a_load, a_script)
-e_in_file = d.entity('ex:arquivo_entrada_csv', {'prov:location': caminho_arquivo_entrada})
-e_dados_brutos = d.entity('ex:dados_brutos_lista', {'ex:value': json.dumps(dados_brutos)})
-d.wasGeneratedBy(e_dados_brutos, a_load)
-a_load.used(e_in_file)
+    print("Iniciando transformações...")
 
+    # 1. Corrigir coluna 'UF' com base no 'Município'
+    print("Corrigindo 'UF' com base no 'Município'...")
+    correcoes_estado = {
+        "Rio de Janeiro": "RJ",
+        "Fortaleza": "CE",
+    }
+    df['UF'] = df['Município'].map(correcoes_estado).fillna(df['UF'])
 
-# --- Etapa 2: Processar Dados (Calcular Média) ---
-# O código principal do workflow
-soma = sum(dados_brutos)
-contagem = len(dados_brutos)
-media = np.mean(dados_brutos) # Usando numpy para parecer mais científico
+    # 2. Recalcular 'Valor total pago'
+    # Garante que o valor esteja correto (Preço * Quantidade) + Taxa
+    print("Recalculando 'Valor total pago'...")
+    df['Valor total pago'] = (df['Preço unitário'] * df['Quantidade comprada']) + df['Taxa de entrega']
 
-print(f"Média calculada: {media}")
+    # 3. Remover linhas com 'CPF do cliente' nulo ou vazio
+    print("Removendo registros com 'CPF do cliente' nulo ou vazio...")
+    df = df[df["CPF do cliente"].notna() & (df["CPF do cliente"] != "")]
+    print(f"Número de tuplas/atributos após filtro de CPF: {df.shape}")
 
-# --- Captura de Proveniência (Etapa 2) ---
-a_calc = d.activity('ex:calcular_media')
-d.wasAssociatedWith(a_calc, a_script)
-e_media = d.entity('ex:media_calculada', {'ex:value': media})
-d.wasGeneratedBy(e_media, a_calc)
-a_calc.used(e_dados_brutos)
+    # 4. Remover linhas com 'Nome do cliente' nulo ou vazio
+    print("Removendo registros com 'Nome do cliente' nulo ou vazio...")
+    df = df[df["Nome do cliente"].notna() & (df["Nome do cliente"] != "")]
+    print(f"Número final de tuplas/atributos: {df.shape}")
+    
+    print("Transformações concluídas.")
+    return df
 
+def carregar_dados(df, caminho_saida):
+    """
+    Salva o DataFrame tratado em um novo arquivo CSV.
+    """
+    if df is None:
+        print("Nenhum dado para salvar.")
+        return
 
-# --- Etapa 3: Salvar Resultado (Simulado) ---
-# Em um workflow real, isso salvaria em um arquivo de texto ou CSV.
-caminho_arquivo_saida = "results/media_final.txt"
-print(f"Salvando resultado em {caminho_arquivo_saida}")
+    print(f"Salvando arquivo tratado em: {caminho_saida}")
+    try:
+        df.to_csv(caminho_saida, index=False, encoding="utf-8")
+        print(f"✅ Novo arquivo salvo com sucesso como {caminho_saida}")
+        
+    except Exception as e:
+        print(f"Ocorreu um erro ao salvar o arquivo: {e}")
 
-# --- Captura de Proveniência (Etapa 3) ---
-a_save = d.activity('ex:salvar_resultado')
-d.wasAssociatedWith(a_save, a_script)
-e_out_file = d.entity('ex:arquivo_saida_txt', {'prov:location': caminho_arquivo_saida})
-d.wasGeneratedBy(e_out_file, a_save)
-a_save.used(e_media)
+def main():
+    """
+    Orquestra o processo de ETL com captura de proveniência em granularidade grossa.
+    """
+    d = prov.ProvDocument()
+    d.add_namespace('ex', 'http://example.org/')
+    a_script = d.agent('ex:script_executor')
 
+    arquivo_entrada = 'clientes_compras_grupo_1.csv'
+    arquivo_saida = 'cliente_compras_grupo_1_tratado.csv'
 
-# --- FINALIZAÇÃO E SALVAMENTO DA PROVENIÊNCIA ---
-print("Workflow concluído.")
-d.serialize('provenance.json', format='json')
-print("Grafo de Proveniência (W3C-PROV) salvo em 'provenance.json'.")
+    # Etapa Macro 1: Extração
+    t_start = datetime.now(timezone.utc)
+    df = extrair_dados(arquivo_entrada)
+    t_end = datetime.now(timezone.utc)
+    
+    act_ext = d.activity('ex:extrair_dados', startTime=t_start, endTime=t_end)
+    d.wasAssociatedWith(act_ext, a_script)
+    e_in = d.entity('ex:arquivo_entrada', {'prov:location': arquivo_entrada})
+    d.used(act_ext, e_in)
+    
+    if df is not None:
+        e_df_raw = d.entity('ex:df_bruto', {'ex:shape': str(df.shape)})
+        d.wasGeneratedBy(e_df_raw, act_ext)
+        d.wasDerivedFrom(e_df_raw, e_in)
+
+    # Etapa Macro 2: Transformação
+    t_start = datetime.now(timezone.utc)
+    df_tratado = transformar_dados(df)
+    t_end = datetime.now(timezone.utc)
+    
+    act_transf = d.activity('ex:transformar_dados', startTime=t_start, endTime=t_end)
+    d.wasAssociatedWith(act_transf, a_script)
+    
+    if df is not None:
+        d.used(act_transf, e_df_raw)
+        
+    if df_tratado is not None:
+        e_df_tratado = d.entity('ex:df_tratado', {'ex:shape': str(df_tratado.shape)})
+        d.wasGeneratedBy(e_df_tratado, act_transf)
+        if df is not None:
+            d.wasDerivedFrom(e_df_tratado, e_df_raw)
+    
+    # Etapa Macro 3: Carga
+    t_start = datetime.now(timezone.utc)
+    carregar_dados(df_tratado, arquivo_saida)
+    t_end = datetime.now(timezone.utc)
+    
+    act_load = d.activity('ex:carregar_dados', startTime=t_start, endTime=t_end)
+    d.wasAssociatedWith(act_load, a_script)
+    
+    if df_tratado is not None:
+        d.used(act_load, e_df_tratado)
+        e_out = d.entity('ex:arquivo_saida', {'prov:location': arquivo_saida})
+        d.wasGeneratedBy(e_out, act_load)
+        d.wasDerivedFrom(e_out, e_df_tratado)
+
+    d.serialize('provenance_w3c.json', format='json')
+
+if __name__ == "__main__":
+    main()

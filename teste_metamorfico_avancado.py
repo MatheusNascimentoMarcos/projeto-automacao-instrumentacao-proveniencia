@@ -3,6 +3,7 @@ import json
 import subprocess
 import shutil
 import sys
+import argparse
 
 # --- CONFIGURAÇÃO ---
 
@@ -15,7 +16,28 @@ if not api_key:
 # 2. Configuração do Docker e Identidade de Usuário
 IMG_NAME = "ia-prov-wrapper"
 CURRENT_DIR = os.getcwd()
-DIR_TESTES = "temp_metamorfico"
+
+# Nível de granularidade do template de prompt (definido via --level ou PROV_LEVEL)
+VALID_LEVELS = ["coarse", "medium", "fine", "metamorphic"]
+
+# Tolerância absoluta (em Activities) para a relação aditiva full ≈ p1 + p2.
+# Níveis com desdobramento de laços variam mais entre execuções da IA.
+TOLERANCIA_DECOMP = {"coarse": 1, "medium": 1, "fine": 2, "metamorphic": 2}
+LEVEL = "metamorphic"
+DIR_TESTES = f"temp_metamorfico_{LEVEL}"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Teste metamórfico da ferramenta e do prompt (cenários sintéticos)."
+    )
+    parser.add_argument(
+        "--level",
+        choices=VALID_LEVELS,
+        default=os.environ.get("PROV_LEVEL", "metamorphic"),
+        help="Granularidade do template de prompt (padrão: metamorphic ou $PROV_LEVEL).",
+    )
+    return parser.parse_args()
 
 # --- SOLUÇÃO 1: Identificar o usuário atual (Linux) ---
 try:
@@ -96,6 +118,8 @@ def executar_instrumentacao(nome_script_entrada, nome_script_saida):
         "instrument_workflow.py",
         arg_entrada,
         arg_saida,
+        "--level",
+        LEVEL,
     ]
 
     # Executa e aguarda
@@ -108,6 +132,11 @@ def executar_instrumentacao(nome_script_entrada, nome_script_saida):
         return None
 
     # --- PASSO 2: Rodar o Script Gerado ---
+    # Remove JSON residual de execuções anteriores, para nunca confundir
+    # o grafo de outro cenário com o deste.
+    if os.path.exists("provenance_w3c.json"):
+        os.remove("provenance_w3c.json")
+
     print(f"   ➤ Executando script gerado: {nome_script_saida}...")
     cmd_execucao = DOCKER_BASE_CMD + ["python3", arg_saida]
 
@@ -130,11 +159,6 @@ def executar_instrumentacao(nome_script_entrada, nome_script_saida):
         if os.path.exists(json_destino):
             os.remove(json_destino)
         shutil.move(json_padrao, json_destino)
-        return json_destino
-    elif os.path.exists("provenance.json"):
-        if os.path.exists(json_destino):
-            os.remove(json_destino)
-        shutil.move("provenance.json", json_destino)
         return json_destino
 
     print(f"   ⚠️  AVISO: Nenhum JSON foi gerado para {nome_script_entrada}.")
@@ -173,8 +197,18 @@ resultado = [x * 2 for x in dados]
 
     print(f"   Loop: {act_a} Atividades | List Comp: {act_b} Atividades")
 
-    if act_a == act_b and act_a > 0:
-        print("✅ SUCESSO: Estrutura consistente.")
+    if LEVEL in ("coarse", "medium"):
+        # Laços não são desdobrados: loop e comprehension devem ter a mesma estrutura.
+        ok = act_a == act_b and act_a > 0
+    else:
+        # fine / metamorphic: cada iteração do laço vira uma Activity, enquanto a
+        # comprehension é uma única operação. Divergência é esperada; o que se
+        # verifica é que o laço foi desdobrado (>= Activities) e ambos geraram grafo.
+        print("   ℹ️  Nível com desdobramento de laços: espera-se Loop >= List Comp.")
+        ok = act_a >= act_b > 0
+
+    if ok:
+        print("✅ SUCESSO: Estrutura consistente com o nível.")
     else:
         print("❌ FALHA: Estrutura inconsistente ou zero.")
 
@@ -212,6 +246,9 @@ a = a + 5
 def teste_decomposicao():
     print("\n🔵 [3/3] Testando Decomposição...")
 
+    # Programa completo = p1 (prefixo) + p2 (trecho novo, autocontido).
+    # p2 NÃO repete a linha de p1: traz o próprio dado de entrada, para que
+    # o script rode sozinho sem depender de `raw_data`.
     code_full = """
 raw_data = [10, 20, 30]
 processed = [x - 5 for x in raw_data]
@@ -220,8 +257,7 @@ processed = [x - 5 for x in raw_data]
 raw_data = [10, 20, 30]
 """
     code_p2 = """
-raw_data = [10, 20, 30] 
-processed = [x - 5 for x in raw_data]
+processed = [x - 5 for x in [10, 20, 30]]
 """
 
     criar_arquivo("decomp_full.py", code_full)
@@ -232,16 +268,39 @@ processed = [x - 5 for x in raw_data]
     json_p1 = executar_instrumentacao("decomp_p1.py", "decomp_p1_inst.py")
     json_p2 = executar_instrumentacao("decomp_p2.py", "decomp_p2_inst.py")
 
-    act_full, _ = extrair_metricas_prov(json_full)
-    act_p1, _ = extrair_metricas_prov(json_p1)
-    act_p2, _ = extrair_metricas_prov(json_p2)
+    act_full, ent_full = extrair_metricas_prov(json_full)
+    act_p1, ent_p1 = extrair_metricas_prov(json_p1)
+    act_p2, ent_p2 = extrair_metricas_prov(json_p2)
 
-    soma_partes = act_p1 + act_p2
+    print(f"   Completo: {act_full} Act / {ent_full} Ent")
+    print(f"   p1      : {act_p1} Act / {ent_p1} Ent")
+    print(f"   p2      : {act_p2} Act / {ent_p2} Ent")
 
-    print(f"   Completo: {act_full} | Soma Partes: {soma_partes}")
+    # Se algum grafo não foi gerado, o problema é de execução, não da relação.
+    if 0 in (act_full, act_p1, act_p2):
+        print(
+            "❌ FALHA: algum grafo não foi gerado (ver erros acima); "
+            "a relação não pôde ser avaliada."
+        )
+        return
 
-    # Permitimos uma tolerância de +/- 1 atividade (ex: start/end markers)
-    if abs(act_full - soma_partes) <= 2 and act_full > 0:
+    tol = TOLERANCIA_DECOMP.get(LEVEL, 1)
+
+    # RM-a (prefixo): o grafo de um prefixo é subgrafo do grafo completo,
+    # então não pode ter MAIS nós. Verificação objetiva, sem tolerância.
+    ok_prefixo = act_p1 <= act_full and ent_p1 <= ent_full
+    print(f"   RM-a prefixo (p1 <= completo): {'ok' if ok_prefixo else 'violada'}")
+
+    # RM-b (aditividade): completo ≈ p1 + p2, com tolerância por nível.
+    soma = act_p1 + act_p2
+    diff = abs(act_full - soma)
+    ok_soma = diff <= tol
+    print(
+        f"   RM-b aditividade: completo={act_full} vs p1+p2={soma} "
+        f"(diff={diff}, tolerância={tol}): {'ok' if ok_soma else 'violada'}"
+    )
+
+    if ok_prefixo and ok_soma:
         print("✅ SUCESSO: Decomposição coerente.")
     else:
         print("❌ FALHA: Inconsistência na decomposição.")
@@ -249,6 +308,11 @@ processed = [x - 5 for x in raw_data]
 
 # --- MAIN ---
 if __name__ == "__main__":
+    args = parse_args()
+    LEVEL = args.level
+    DIR_TESTES = f"temp_metamorfico_{LEVEL}"  # uma pasta por nível
+    print(f"Nível de granularidade: {LEVEL}")
+
     setup()
     try:
         teste_equivalencia_sintatica()
